@@ -5,7 +5,6 @@ import pdb
 import os
 from datetime import datetime
 import time
-from kafka import KafkaConsumer, KafkaProducer
 import json
 import yaml
 import random
@@ -20,7 +19,7 @@ class ElasticWrapper():
         #public_dns = os.environ['PUBLIC_DNS']
         self.index = index
         self.type = type
-        self.es =  Elasticsearch([{'host': 'localhost', 'port': 9200}])
+        self.es =  Elasticsearch([{'host': '172.31.2.14', 'port': 9200}])
     
     def list_indices(self):
         return self.es.indices.get_aliases().keys()
@@ -90,8 +89,9 @@ class ElasticWrapper():
         """
         def add_meta_fields(doc):
             #return "{}\n" + json.dumps(doc) + "\n"
-            return '{}\n{"query":{"filtered": {"filter": {"geo_distance": {"distance": "400", "location": {"lat": "'+str(doc["lat"])+'", "lon": "'+str(doc["lon"])+'"}}}}}}\n'
-        #docs = map(add_meta_fields, docs)
+            return '{}\n{"query":{"filtered": {"filter": {"geo_distance": {"distance": "400", \
+                    "location": {"lat": "'+str(doc["lat"])+'", "lon": "'+str(doc["lon"])+'"}}}}}}\n'
+
         print docs
         return self.es.msearch(index=self.index, search_type="query_and_fetch", body=docs)
 

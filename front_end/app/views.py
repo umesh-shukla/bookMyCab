@@ -4,14 +4,60 @@ from flask import jsonify
 import ast
 from custom_packages.elasticWrapper import ElasticWrapper
 import json
+from flask import render_template
+from kafka import KafkaProducer
+
+
+ew_cab_assign = ElasticWrapper('cab_assign')
+ew_cab = ElasticWrapper('cab')
+producer = KafkaProducer(bootstrap_servers='localhost:9092')
+
+def convert2Json(result):
+    jsonResult = json.dumps(result)
+    records = []
+    ids = []
+    for k, v in result.items():
+        if str(k) == 'hits':
+            for item in v['hits']:
+                records.append(item['_source'])
+                ids.append(item['_id'])
+    return (records, ids)
 
 @app.route('/')
-@app.route('/index')
-def index():
-  return "Hello, World!"
+@app.route('/bookmycab')
+def bookmycab():
+  user = { 'nickname': 'Miguel' } # fake user
+  return render_template("bookCab.html", title = 'Home', user = user)
 
-ew = ElasticWrapper()
-ew_cab_assign = ElasticWrapper('cab_assign')
+@app.route('/bookmycab/<lat>/<lon>')
+def getDriver(lat, lon):
+    cab_query = {'sort': [{'_geo_distance': {'cab_location': {'lat': lat, 'lon': lon}, 'order': 'asc','unit':'m'}}],  "query": { "match_all": {} } } 
+    result = ew_cab.search_document(cab_query)
+    (finalResult, ids) = convert2Json(result)
+    for item in finalResult:
+        print item
+    return jsonify(finalResult)
+    
+    
+@app.route('/booknow/<lat>/<lon>')
+def bookCabNow(lat, lon):
+   # call kafka producer from here  
+    custRequest = 'Umesh,2,2016-01-01 00:00:00,2016-01-01 00:00:00,5,4.90,'+str(lon)+','+str(lat)+',1,N,-73.944473266601563,40.716678619384766,1,18,0.5,0.5,0,0,0.3,19.3'
+    try:
+        producer.send('customer-request', custRequest)
+    except:
+        e = sys.exc_info()[0]
+        print e
+    print 'Sent Message: '+ custRequest
+
+    # For now, just make a blocking call reading database
+    recordDB = redis.StrictRedis(host='172.31.2.14',  port=6379, db=1, password='abrakadabra')
+    while True: 
+        bookedCab = recordDB.get('Umesh')
+        if str(bookedCab) != 'None':
+            break
+    print 'Booked Cab: '+ str(bookedCab)
+    return jsonify({"success" : "ok", "cust": "Umesh", "cab": str(bookedCab)})
 
 @app.route('/latest-results')
 def get_latest():

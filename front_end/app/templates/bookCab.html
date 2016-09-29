@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>ASAP Cab - Hop In, Let's Go</title>
+    <meta name="viewport" content="initial-scale=1.0">
+    <meta charset="utf-8">
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        height: 70%;
+        width: 70%;
+        text-align: center;
+        margin: 0 auto;
+      }
+
+    .controls {
+        margin-top: 10px;
+        border: 1px solid transparent;
+        border-radius: 2px 0 0 2px;
+        box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        height: 32px;
+        outline: none;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      }
+
+      #pac-input {
+        background-color: #fff;
+        font-family: Roboto;
+        font-size: 15px;
+        font-weight: 300;
+        margin-left: 12px;
+        padding: 0 11px 0 13px;
+        text-overflow: ellipsis;
+        width: 300px;
+      }
+
+      #pac-input:focus {
+        border-color: #4d90fe;
+      }
+
+      .pac-container {
+        font-family: Roboto;
+      }
+
+      #type-selector {
+        color: #fff;
+        background-color: #4d90fe;
+        padding: 5px 11px 0px 11px;
+      }
+
+      #type-selector label {
+        font-family: Roboto;
+        font-size: 13px;
+        font-weight: 300;
+      }
+      #target {
+        width: 345px;
+      }
+    .button {
+        background-color: #3366ff;
+        border: none;
+        color: white;
+        padding: 15px 32px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+    }
+
+    </style>
+  </head>
+  <body>
+    <input id="pac-input" class="controls" type="text" placeholder="Search Box">
+    <div id="map"></div>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <script>
+   
+    var ws;
+    var center_lat = 40.730610;
+    var center_long = -73.935242;
+    var beaches = [];
+    //var marker;
+    var map;
+    
+    function onLoad() {
+        ws = new WebSocket("ws://ec2-52-43-77-237.us-west-2.compute.amazonaws.com/websocket");
+ 
+        ws.onmessage = function(e) {
+           console.log(e.data);
+       sendMsg();
+        };
+    }
+ 
+    function sendMsg() {
+        ws.send('{"user_id" : "Srivats", "type" : "set_user_id"}');
+    }
+    
+    function initMap() {
+        //onLoad()
+        map = new google.maps.Map(document.getElementById('map'), {
+        zoom: 13,
+        center: {lat: center_lat, lng: center_long}
+    });
+
+    var centerMarker = new google.maps.Marker({
+    map: map,
+    draggable: true,
+    animation: google.maps.Animation.DROP,
+    position: {lat: center_lat, lng: center_long}});
+
+   //map.infowindow = new google.maps.InfoWindow();
+   
+   //marker.addListener('click', toggleBounce);
+    centerMarker.addListener('dragend', handleEvent);
+
+    // Commneting out searcbox code for now
+/*
+    // Create the search box and link it to the UI element.
+    var input = document.getElementById('pac-input');
+    var searchBox = new google.maps.places.SearchBox(input);
+    map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
+    
+    // Bias the SearchBox results towards current map's viewport.
+    map.addListener('bounds_changed', function() {
+        searchBox.setBounds(map.getBounds());
+    });
+    
+    //alert('Welcome here')
+    //searchBox.addListener('places_changed',handleSearchBoxEvent);
+    var markers = [];
+        // Listen for the event fired when the user selects a prediction and retrieve
+        // more details for that place.
+        searchBox.addListener('places_changed', function() {
+          var places = searchBox.getPlaces();
+
+          if (places.length == 0) {
+            return;
+          }
+
+          // Clear out the old markers.
+          markers.forEach(function(marker) {
+            marker.setMap(null);
+          });
+          markers = [];
+
+          // For each place, get the icon, name and location.
+          var bounds = new google.maps.LatLngBounds();
+          places.forEach(function(place) {
+            if (!place.geometry) {
+              console.log("Returned place contains no geometry");
+              return;
+            }
+            var icon = {
+              url: place.icon,
+              size: new google.maps.Size(71, 71),
+              origin: new google.maps.Point(0, 0),
+              anchor: new google.maps.Point(17, 34),
+              scaledSize: new google.maps.Size(25, 25)
+            };
+
+            // Create a marker for each place.
+            markers.push(new google.maps.Marker({
+              map: map,
+              icon: icon,
+              title: place.name,
+              position: place.geometry.location
+            }));
+
+            if (place.geometry.viewport) {
+              // Only geocodes have viewport.
+              bounds.union(place.geometry.viewport);
+            } else {
+              bounds.extend(place.geometry.location);
+            }
+          });
+          map.fitBounds(bounds);
+        });
+*/
+    makeQuery();
+    
+    }
+
+    var markers = [];
+        // Listen for the event fired when the user selects a prediction and retrieve
+        // more details for that place.
+    function handleSearchBoxEvent() {
+          var places = searchBox.getPlaces();
+          alert('places_changed triggered')
+
+          if (places.length == 0) {
+            return;
+          }
+
+          // Clear out the old markers.
+          markers.forEach(function(marker) {
+            marker.setMap(null);
+          });
+          markers = [];
+
+          // For each place, get the icon, name and location.
+          var bounds = new google.maps.LatLngBounds();
+          places.forEach(function(place) {
+            if (!place.geometry) {
+              console.log("Returned place contains no geometry");
+              return;
+            }
+            var icon = {
+              url: place.icon,
+              size: new google.maps.Size(71, 71),
+              origin: new google.maps.Point(0, 0),
+              anchor: new google.maps.Point(17, 34),
+              scaledSize: new google.maps.Size(25, 25)
+            };
+
+            // Create a marker for each place.
+            markers.push(new google.maps.Marker({
+              map: map,
+              icon: icon,
+              title: place.name,
+              position: place.geometry.location
+            }));
+
+            if (place.geometry.viewport) {
+              // Only geocodes have viewport.
+              bounds.union(place.geometry.viewport);
+            } else {
+              bounds.extend(place.geometry.location);
+            }
+          });
+          map.fitBounds(bounds);
+        }
+    // */
+function makeQuery()
+{
+     $.ajax({
+        type: 'GET',
+        url: 'http://ec2-52-43-129-33.us-west-2.compute.amazonaws.com/bookmycab/'+center_lat+'/'+center_long,
+        data: { get_param: 'value' },
+        success: function (data) {
+            //alert(data[0]);
+        beaches.length = 0;
+        if(data.length > 0)
+        {
+            //var json_obj = data["responses"][0]["hits"]["hits"];
+            //alert(data[0].cab_location.lat)
+            for (var i in data)
+            {
+               //alert(data[i].cab_location.lat)
+               var myLatlng = new google.maps.LatLng(parseFloat(data[i].cab_location.lat),parseFloat(data[i].cab_location.lon));
+               var arr1 = [data[i].cab_id, myLatlng.lat(), myLatlng.lng()];
+               beaches.push(arr1);
+            }
+            //alert("finsih");
+            setMarkers(map);
+        }
+        }
+    });
+}
+
+function handleEvent(event) {
+    center_lat = event.latLng.lat();
+    center_long = event.latLng.lng();
+    //alert(lat + " " + lng);
+    deleteMarkers();
+    makeQuery();
+}
+
+function deleteMarkers() {
+    clearMarkers();
+    markers.length = 0;
+}
+      
+//Sets the map on all markers in the array.
+function setMapOnAll(map) {    
+    for (var i = 0; i < markers.length; i++) {
+        //alert(markers[i]);  
+    markers[i].setMap(map);
+    }
+}
+ 
+// Removes the markers from the map, but keeps them in the array.
+function clearMarkers() {
+    setMapOnAll(null);
+}
+
+var markers = [];
+
+function setMarkers(map) {
+        // Adds markers to the map.
+        // Marker sizes are expressed as a Size of X,Y where the origin of the image
+        // (0,0) is located in the top left of the image.
+        // Origins, anchor positions and coordinates of the marker increase in the X
+        // direction to the right and in the Y direction down.
+        //alert('Set marker called')
+        var image = {
+          url: 'http://maps.google.com/mapfiles/ms/icons/cabs.png',
+          // This marker is 20 pixels wide by 32 pixels high.
+          size: new google.maps.Size(20, 32),
+          // The origin for this image is (0, 0).
+          origin: new google.maps.Point(0, 0),
+          // The anchor for this image is the base of the flagpole at (0, 32).
+          anchor: new google.maps.Point(0, 32)
+        };
+        // Shapes define the clickable region of the icon. The type defines an HTML
+        // <area> element 'poly' which traces out a polygon as a series of X,Y points.
+        // The final coordinate closes the poly by connecting to the first coordinate.
+        var shape = {
+          coords: [1, 1, 1, 20, 18, 20, 18, 1],
+          type: 'poly'
+        };
+    
+        for (var i = 0; i < beaches.length; i++) {
+          var beach = beaches[i];
+          
+          var marker = new google.maps.Marker({
+            position: {lat: beach[1], lng: beach[2]},
+            map: map,
+            icon: image,
+            shape: shape,
+            title: beach[0],
+          });
+         //alert('ready to push marker')
+         markers.push(marker); 
+         var content = "<h3> Cab ID: " + beach[0] +  '</h3>';
+      
+          marker['infowindow'] = new google.maps.InfoWindow({
+            content: content
+        });
+        
+        google.maps.event.addListener(marker, 'mouseover', function() {
+            this['infowindow'].open(map, this);
+        });
+    
+        google.maps.event.addListener(marker, 'mouseout', function() {
+                this['infowindow'].close(map, this);
+        });
+    
+   }
+}
+
+function toggleBounce() {
+  if (marker.getAnimation() !== null) {
+    marker.setAnimation(null);
+  } else {
+    marker.setAnimation(google.maps.Animation.BOUNCE);
+  }
+}
+
+function bookCab()
+{
+    $.ajax({
+        type: 'GET',
+        url: 'http://ec2-52-43-129-33.us-west-2.compute.amazonaws.com/booknow/'+center_lat+'/'+center_long,
+        data: { get_param: 'value' },
+        success: function (data) {
+            alert(data.cust+", your cab: "+data.cab+" is arriving. Happy Trip!");
+        }
+    });
+     
+}
+
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBsrKTI_9bnx3J0CSXrlBNDKpI1CVtpUxA&libraries=places&callback=initMap" async defer></script>
+<div align="center">
+<button type="button" onclick="bookCab()" class="button">Book Now</button>
+</div>
+</body>
+</html>
