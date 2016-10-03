@@ -18,10 +18,9 @@ def main():
         if count == 0: 
             count = count + 1
             continue
-        #producer.send('customer-request', {"A": a_val, "B": b_val})
         rand_val = random.randint(0,1)
         #rand_val = 0
-        if rand_val == 0:
+        if rand_val == 1:
             line = str(custID%custIDMax) + ',' + line
             producer.send('customer-request', line)
             print ("Customer request: "+line)
@@ -38,8 +37,8 @@ def main():
             countOneLoop = 0
             time.sleep(1)
         
-        if count >10000: 
-            break
+        #if count > 1000: 
+         #   break
 
 if __name__ == "__main__":
     main()

@@ -101,3 +101,19 @@ class ElasticWrapper():
 
     def delete_doc_by_index(self, idx):
         return self.es.delete(index=self.index,doc_type=self.type, id=idx)
+
+    def get_closest_items_bulk_query(self, docs):
+        """ 
+        Bulk indexes multiple documents.
+        docs is a list of document objects.
+        """
+        if len(docs) == 0:
+            return
+        
+        def add_meta_fields(doc):
+            #return "{}\n" + json.dumps(doc) + "\n"
+            return '{}\n{"sort": [{"_geo_distance": {"cab_location":{"lat":'+str(doc["lat"])+',"lon":'+str(doc["long"])+'},"order": "asc","unit":"m"}}], "query": { "match_all": {} } } \n'
+
+        docs = map(add_meta_fields, docs)
+        #print docs
+        return self.es.msearch(index=self.index, search_type="query_and_fetch", body=docs)

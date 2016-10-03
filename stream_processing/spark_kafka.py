@@ -29,8 +29,8 @@ def convert2Json(result):
 # function to parse line of csv data into Sensor class
 def parseSensor(item):
     p = item.split(",")
-    print "in parse sensor"
-    print type(p)
+    #print "in parse sensor"
+    #print type(p)
     ret_val ={'ID': p[0], 'VendorID':p[1],'tpep_pickup_datetime':p[2],'tpep_dropoff_datetime':p[3],\
     'passenger_count':p[4],'trip_distance':p[5],'pickup_longitude':p[6],'pickup_latitude':p[7], \
     'RatecodeID':p[8],'store_and_fwd_flag':p[9],'dropoff_longitude':p[10],'dropoff_latitude':p[11], \
@@ -43,26 +43,28 @@ def findClosestDriver(driverList):
     id_idx = 0
     #print "findClosestDriver called"
     for driver in driverList: 
-        print "Driver: "+ str(driver)
+        #print "Driver: "+ str(driver)
         if str(redisDB.get(driver['cab_id'])) == 'None': 
-            print "Selected Driver: "+ str(driver['cab_id']) + "id: "+ str(id_idx)
+            #print "Selected Driver: "+ str(driver['cab_id']) + "id: "+ str(id_idx)
             redisDB.set(driver['cab_id'], 1)
-            return (driver['cab_id'], id_idx)
+            return (driver, id_idx)
         id_idx = id_idx + 1
     return ('None', -1)
         
 # Add driver's entry to database
 def addDrivertoDB(driverRequest):
-    print driverRequest
+    #print driverRequest
     ew_cab = ElasticWrapper('cab')
+    cab_list = []
     for driverData in driverRequest: 
-        print driverData
+        #print driverData
         cabData = {'cab_location': {'lat': driverData['lat'], 'lon': driverData['long']},  'cab_id': driverData['cabID']}
-        ew_cab.create_document_multi([cabData])
+        cab_list.append(cabData)
+
+    ew_cab.create_document_multi(cab_list)
 
 def clearRadisCache():
-    #print "In earRadisCache"
-    print datetime.now().time()
+    #print datetime.now().time()
     redisDB = redis.StrictRedis(host='172.31.2.14',  port=6379, db=0, password='abrakadabra')
     recordDB = redis.StrictRedis(host='172.31.2.14',  port=6379, db=1, password='abrakadabra')
     redisDB.flushdb()
@@ -70,37 +72,45 @@ def clearRadisCache():
 
 # Find closest driver for each RDD and store it to DB 
 def saveCabAssignmentToDb(customer, closestDriver):
-    ewCabAssignDb = ElasticWrapper('cab_assign')
     cabAssignData = {'cust_id':customer['custID'],'cust_pickup_location':{'lat':customer['lat'],'lon':customer['long']}, \
                     'cust_dropoff_location': {'lat':customer['dropoff_lat'],'lon':customer['dropoff_long']},'cab_id':closestDriver['cab_id'], \
                     'cab_location':closestDriver['cab_location'] }  
-    print cabAssignData
-    ewCabAssignDb.create_document_multi([cabAssignData])
+    return cabAssignData
 
 # Find closest driver, given customer lat, lon
-def getClosestDriver(custRequest):
+def getClosestDriver(customerStream):
     ew_cab = ElasticWrapper('cab')
-    for customer in custRequest:
-        print customer 
-        cab_query = {'sort': [{'_geo_distance': {'cab_location': {'lat': customer['lat'], 'lon':customer['long']},'order': 'asc','unit':'m'}}], \
-                     "query": { "match_all": {} } }
-        result = ew_cab.search_document(cab_query)
-        (closestDrivers, doc_ids) = convert2Json(result)
-        # Iterate through all the drivers in Redis. If a 'driver' key is not present, then write to it and assign
-        # this driver to customer 
+    ewCabAssignDb = ElasticWrapper('cab_assign')
+    cabAssignmentList = []
+    customers = []
+    for customer in customerStream:
+        #print customer
+        customers.append(customer)
+
+    res = ew_cab.get_closest_items_bulk_query(customers)
+    #print "Response length: "+ str(len(res['responses']))
+    #print "customers length: "+ str(len(customers))
+    for i in range(0, len(customers)): 
+        #print res['responses'][i]
+        (closestDrivers, doc_ids) = convert2Json(res['responses'][i])
         (selectedDriver, id_idx) = findClosestDriver(closestDrivers)
-        print "selectedDriver: "+str(selectedDriver)
         if (selectedDriver != 'None'):
-            print "Customer: "+ str(customer['custID']) +"Assigned driver: "+ str(selectedDriver)
-             # Store custID, cabID and their lat, lons in separate DB and then delete cabID from driver DB now
-            saveCabAssignmentToDb(customer, closestDrivers[0])
-            # This is for front purposes
+            print "Customer: "+ str(customers[i]['custID']) + "Assigned driver: "+ str(selectedDriver['cab_id']) 
+            cabAssignData = saveCabAssignmentToDb(customers[i], selectedDriver)
+            cabAssignmentList.append(cabAssignData)
+            # This is for front end purposes. Temporary hack. Need a pub-sub model in redis as final solution
             redisDBAssignmentRecord = redis.StrictRedis(host='172.31.2.14',  port=6379, db=1, password='abrakadabra')
-            redisDBAssignmentRecord.set(str(customer['custID']), str(selectedDriver))
-            # delete assigned Cab record from cab database
-            ew_cab.delete_doc_by_index(doc_ids[id_idx])
-        else: 
+            redisDBAssignmentRecord.set(str(customer['custID']), str(selectedDriver['cab_id']))
+            # Delete cab from cab database. TODO: Do a bulk delete
+            try: 
+                ew_cab.delete_doc_by_index(doc_ids[id_idx])
+            except Exception as e:
+                print e
+                pass
+        else:
             print "No suitable driver found"
+
+    ewCabAssignDb.create_document_multi(cabAssignmentList)
 
 ## Main Loop ## 
 if __name__ == "__main__":
@@ -111,7 +121,7 @@ if __name__ == "__main__":
     
     rs = redis.StrictRedis(host='172.31.2.14',  port=6379, db=0, password='abrakadabra')
     sc = SparkContext(appName="PythonStreamingKafkaWordCount")
-    ssc = StreamingContext(sc, 10)  # window size in sec 
+    ssc = StreamingContext(sc, 2)  # window size in sec 
     zkQuorum, topic = sys.argv[1:]
     zkQuorum = "localhost::2181"
     customer_topic = "customer-request"
