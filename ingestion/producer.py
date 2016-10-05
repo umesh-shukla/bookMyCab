@@ -1,4 +1,7 @@
-## Producer Script for kafka: Reads from CSv and dumps into Kafka topics ##
+## Producer Script for kafka: Reads from CSV and dumps into Kafka topics ##
+## This script is used to stress test the system and find bottlenecks in scalability
+## It reads a line from CSV and marks it as a driver or rider with 0.5 probability. 
+## ../front_end/app/views.py has actual Kafka producer sending rider stream into system
 
 from kafka import KafkaConsumer, KafkaProducer
 import json
@@ -19,21 +22,20 @@ def main():
             count = count + 1
             continue
         rand_val = random.randint(0,1)
-        #rand_val = 0
-        if rand_val == 1:
+        if rand_val == 1:   # Rider
             line = str(custID%custIDMax) + ',' + line
             producer.send('customer-request', line)
-            print ("Customer request: "+line)
+            #print ("Customer request: "+line)
             custID = custID +1
-        else:
+        else:               # Cab
             line = str(cabID%cabIDMax) + ',' + line
             producer.send('driver-request', line)
-            print ("Driver request: "+line)
+            #print ("Driver request: "+line)
             cabID = cabID + 1
         count = count + 1 
         countOneLoop = countOneLoop + 1
-        print ("sent json message"+line)
-        if (countOneLoop > 500): 
+        #print ("sent json message"+line)
+        if (countOneLoop > 1000): 
             countOneLoop = 0
             time.sleep(1)
         

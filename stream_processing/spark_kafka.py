@@ -14,7 +14,6 @@ __all__ = ["SparkSession"]
 # Parses elasticsearch query result and returns records and their IDs
 def convert2Json(result): 
     jsonResult = json.dumps(result)
-    #print jsonResult
     records = []
     ids = []
     for k, v in result.items(): 
@@ -26,11 +25,9 @@ def convert2Json(result):
         #print "Key:" + str(k) +", "+"Value:"+str(v['hits'])
     return (records, ids)
 
-# function to parse line of csv data into Sensor class
+# Parse line of csv data into Sensor class
 def parseSensor(item):
     p = item.split(",")
-    #print "in parse sensor"
-    #print type(p)
     ret_val ={'ID': p[0], 'VendorID':p[1],'tpep_pickup_datetime':p[2],'tpep_dropoff_datetime':p[3],\
     'passenger_count':p[4],'trip_distance':p[5],'pickup_longitude':p[6],'pickup_latitude':p[7], \
     'RatecodeID':p[8],'store_and_fwd_flag':p[9],'dropoff_longitude':p[10],'dropoff_latitude':p[11], \
@@ -41,7 +38,6 @@ def parseSensor(item):
 def findClosestDriver(driverList): 
     redisDB = redis.StrictRedis(host='172.31.2.14',  port=6379, db=0, password='abrakadabra') 
     id_idx = 0
-    #print "findClosestDriver called"
     for driver in driverList: 
         #print "Driver: "+ str(driver)
         if str(redisDB.get(driver['cab_id'])) == 'None': 
@@ -120,7 +116,7 @@ if __name__ == "__main__":
         exit(-1)
     
     rs = redis.StrictRedis(host='172.31.2.14',  port=6379, db=0, password='abrakadabra')
-    sc = SparkContext(appName="PythonStreamingKafkaWordCount")
+    sc = SparkContext(appName="BookMyCab")
     ssc = StreamingContext(sc, 2)  # window size in sec 
     zkQuorum, topic = sys.argv[1:]
     zkQuorum = "localhost::2181"

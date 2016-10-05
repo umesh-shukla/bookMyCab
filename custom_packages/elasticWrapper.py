@@ -9,14 +9,9 @@ import json
 import yaml
 import random
 import threading, logging, time
-#from utils.utils import get_id, pprint
-#from utils.utils import get_id, pprint
-#See: https://elasticsearch-py.readthedocs.io/en/master/api.html
-
 
 class ElasticWrapper():
     def __init__(self, index="geodata", type="point"):
-        #public_dns = os.environ['PUBLIC_DNS']
         self.index = index
         self.type = type
         self.es =  Elasticsearch([{'host': '172.31.2.14', 'port': 9200}])
@@ -44,6 +39,7 @@ class ElasticWrapper():
         print identifier
         return self.es.create(index=self.index, doc_type=self.type, body=doc, id=identifier)
     
+    # Bulk create 
     def create_document_multi(self, docs):
         """
         Bulk indexes multiple documents. 
@@ -59,13 +55,12 @@ class ElasticWrapper():
     
         docs = map(add_meta_fields, docs)
         return eshelpers.bulk(self.es, docs)
-        
+       
+    """ 
     def create_document_multi_id(self, docs):
-        """
-        Bulk indexes multiple documents. 
-        docs is a list of document objects.
-        Creates a ascending index
-        """
+        #Bulk indexes multiple documents. 
+        #docs is a list of document objects.
+        #Creates a ascending index
         prefix = get_id()[:10]
 
         def add_meta_fields(doc, i):
@@ -78,10 +73,11 @@ class ElasticWrapper():
     
         docs = [add_meta_fields(doc, i) for i, doc in enumerate(docs)]
         return eshelpers.bulk(self.es, docs)
-    
+   """ 
     def search_document(self, query):
         return self.es.search(index=self.index, doc_type=self.type, body=query)
-    
+   
+    # Bulk query  
     def search_document_multi(self, docs):
         """
         Bulk indexes multiple documents.
@@ -102,6 +98,7 @@ class ElasticWrapper():
     def delete_doc_by_index(self, idx):
         return self.es.delete(index=self.index,doc_type=self.type, id=idx)
 
+    # Query to get closest cab to the user
     def get_closest_items_bulk_query(self, docs):
         """ 
         Bulk indexes multiple documents.
@@ -112,7 +109,7 @@ class ElasticWrapper():
         
         def add_meta_fields(doc):
             #return "{}\n" + json.dumps(doc) + "\n"
-            return '{}\n{"sort": [{"_geo_distance": {"cab_location":{"lat":'+str(doc["lat"])+',"lon":'+str(doc["long"])+'},"order": "asc","unit":"m"}}], "query": { "match_all": {} } } \n'
+            return '{}\n{"sort": [{"_geo_distance": {"cab_location":{"lat":'+str(doc["lat"])+',"lon":'+str(doc["long"])+'}, "order": "asc","unit":"m"}}], "query": { "match_all": {} } } \n'
 
         docs = map(add_meta_fields, docs)
         #print docs

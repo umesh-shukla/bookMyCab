@@ -77,7 +77,6 @@
     </style>
   </head>
   <body>
-    <input id="pac-input" class="controls" type="text" placeholder="Search Box">
     <div id="map"></div>
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
     <script>
@@ -88,102 +87,21 @@
     var beaches = [];
     //var marker;
     var map;
-    
-    function onLoad() {
-        ws = new WebSocket("ws://ec2-52-43-77-237.us-west-2.compute.amazonaws.com/websocket");
- 
-        ws.onmessage = function(e) {
-           console.log(e.data);
-       sendMsg();
-        };
-    }
- 
-    function sendMsg() {
-        ws.send('{"user_id" : "Srivats", "type" : "set_user_id"}');
-    }
-    
+
     function initMap() {
-        //onLoad()
-        map = new google.maps.Map(document.getElementById('map'), {
-        zoom: 13,
-        center: {lat: center_lat, lng: center_long}
-    });
 
-    var centerMarker = new google.maps.Marker({
-    map: map,
-    draggable: true,
-    animation: google.maps.Animation.DROP,
-    position: {lat: center_lat, lng: center_long}});
+        map = new google.maps.Map(document.getElementById('map'), { zoom: 13, center: {lat: center_lat, lng: center_long} });
+        var centerMarker = new google.maps.Marker({
+                                map: map,
+                                draggable: true,
+                                animation: google.maps.Animation.DROP,
+                                position: {lat: center_lat, lng: center_long}});
 
-   //map.infowindow = new google.maps.InfoWindow();
-   
-   //marker.addListener('click', toggleBounce);
-    centerMarker.addListener('dragend', handleEvent);
+       //marker.addListener('click', toggleBounce);
+        centerMarker.addListener('dragend', handleEvent);
 
-    // Commneting out searcbox code for now
-/*
-    // Create the search box and link it to the UI element.
-    var input = document.getElementById('pac-input');
-    var searchBox = new google.maps.places.SearchBox(input);
-    map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
-    
-    // Bias the SearchBox results towards current map's viewport.
-    map.addListener('bounds_changed', function() {
-        searchBox.setBounds(map.getBounds());
-    });
-    
-    //alert('Welcome here')
-    //searchBox.addListener('places_changed',handleSearchBoxEvent);
-    var markers = [];
-        // Listen for the event fired when the user selects a prediction and retrieve
-        // more details for that place.
-        searchBox.addListener('places_changed', function() {
-          var places = searchBox.getPlaces();
-
-          if (places.length == 0) {
-            return;
-          }
-
-          // Clear out the old markers.
-          markers.forEach(function(marker) {
-            marker.setMap(null);
-          });
-          markers = [];
-
-          // For each place, get the icon, name and location.
-          var bounds = new google.maps.LatLngBounds();
-          places.forEach(function(place) {
-            if (!place.geometry) {
-              console.log("Returned place contains no geometry");
-              return;
-            }
-            var icon = {
-              url: place.icon,
-              size: new google.maps.Size(71, 71),
-              origin: new google.maps.Point(0, 0),
-              anchor: new google.maps.Point(17, 34),
-              scaledSize: new google.maps.Size(25, 25)
-            };
-
-            // Create a marker for each place.
-            markers.push(new google.maps.Marker({
-              map: map,
-              icon: icon,
-              title: place.name,
-              position: place.geometry.location
-            }));
-
-            if (place.geometry.viewport) {
-              // Only geocodes have viewport.
-              bounds.union(place.geometry.viewport);
-            } else {
-              bounds.extend(place.geometry.location);
-            }
-          });
-          map.fitBounds(bounds);
-        });
-*/
-    makeQuery();
+        // Commneting out searcbox code for now
+        makeQuery();
     
     }
 
@@ -191,51 +109,52 @@
         // Listen for the event fired when the user selects a prediction and retrieve
         // more details for that place.
     function handleSearchBoxEvent() {
-          var places = searchBox.getPlaces();
-          alert('places_changed triggered')
+        var places = searchBox.getPlaces();
+        alert('places_changed triggered')
 
-          if (places.length == 0) {
+        if (places.length == 0) {
             return;
-          }
+        }
 
-          // Clear out the old markers.
-          markers.forEach(function(marker) {
+        // Clear out the old markers.
+        markers.forEach(function(marker) {
             marker.setMap(null);
-          });
-          markers = [];
+        });
+        markers = [];
 
-          // For each place, get the icon, name and location.
-          var bounds = new google.maps.LatLngBounds();
-          places.forEach(function(place) {
+        // For each place, get the icon, name and location.
+        var bounds = new google.maps.LatLngBounds();
+        places.forEach(function(place) {
             if (!place.geometry) {
-              console.log("Returned place contains no geometry");
-              return;
+                console.log("Returned place contains no geometry");
+            return;
             }
+            
             var icon = {
-              url: place.icon,
-              size: new google.maps.Size(71, 71),
-              origin: new google.maps.Point(0, 0),
-              anchor: new google.maps.Point(17, 34),
-              scaledSize: new google.maps.Size(25, 25)
+                url: place.icon,
+                size: new google.maps.Size(71, 71),
+                origin: new google.maps.Point(0, 0),
+                anchor: new google.maps.Point(17, 34),
+                scaledSize: new google.maps.Size(25, 25)
             };
 
             // Create a marker for each place.
             markers.push(new google.maps.Marker({
-              map: map,
-              icon: icon,
-              title: place.name,
-              position: place.geometry.location
+                map: map,
+                icon: icon,
+                title: place.name,
+                position: place.geometry.location
             }));
 
             if (place.geometry.viewport) {
-              // Only geocodes have viewport.
-              bounds.union(place.geometry.viewport);
+                // Only geocodes have viewport.
+                bounds.union(place.geometry.viewport);
             } else {
-              bounds.extend(place.geometry.location);
+                  bounds.extend(place.geometry.location);
             }
-          });
-          map.fitBounds(bounds);
-        }
+        });
+    map.fitBounds(bounds);
+    }
     // */
 function makeQuery()
 {
