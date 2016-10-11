@@ -1,5 +1,6 @@
 ## Spark streaming Code ###
 import sys
+import re
 from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
 from pyspark.streaming.kafka import KafkaUtils
@@ -9,6 +10,7 @@ import json
 import redis
 from custom_packages.elasticWrapper import ElasticWrapper
 from datetime import datetime
+
 __all__ = ["SparkSession"]
 
 # Parses elasticsearch query result and returns records and their IDs
@@ -26,7 +28,7 @@ def convert2Json(result):
     return (records, ids)
 
 # Parse line of csv data into Sensor class
-def parseSensor(item):
+def parseStream(item):
     p = item.split(",")
     ret_val ={'ID': p[0], 'VendorID':p[1],'tpep_pickup_datetime':p[2],'tpep_dropoff_datetime':p[3],\
     'passenger_count':p[4],'trip_distance':p[5],'pickup_longitude':p[6],'pickup_latitude':p[7], \
@@ -36,7 +38,8 @@ def parseSensor(item):
     return ret_val
    
 def findClosestDriver(driverList): 
-    redisDB = redis.StrictRedis(host='172.31.2.14',  port=6379, db=0, password='abrakadabra') 
+    redisDB = redis.StrictRedis(host=confParams['redis_host'],  port=confParams['redis_port'], db=confParams['cabDB'], \
+              password=confParams['redis_pwd'])
     id_idx = 0
     for driver in driverList: 
         #print "Driver: "+ str(driver)
@@ -60,9 +63,10 @@ def addDrivertoDB(driverRequest):
     ew_cab.create_document_multi(cab_list)
 
 def clearRadisCache():
-    #print datetime.now().time()
-    redisDB = redis.StrictRedis(host='172.31.2.14',  port=6379, db=0, password='abrakadabra')
-    recordDB = redis.StrictRedis(host='172.31.2.14',  port=6379, db=1, password='abrakadabra')
+    redisDB = redis.StrictRedis(host=confParams['redis_host'],  port=confParams['redis_port'], db=confParams['cabDB'], \
+         password=confParams['redis_pwd'])
+    recordDB = redis.StrictRedis(host=confParams['redis_host'],  port=confParams['redis_port'], db=confParams['custReservRecord'], \
+         password=confParams['redis_pwd'])
     redisDB.flushdb()
     recordDB.flushdb()
 
@@ -84,8 +88,6 @@ def getClosestDriver(customerStream):
         customers.append(customer)
 
     res = ew_cab.get_closest_items_bulk_query(customers)
-    #print "Response length: "+ str(len(res['responses']))
-    #print "customers length: "+ str(len(customers))
     for i in range(0, len(customers)): 
         #print res['responses'][i]
         (closestDrivers, doc_ids) = convert2Json(res['responses'][i])
@@ -95,7 +97,8 @@ def getClosestDriver(customerStream):
             cabAssignData = saveCabAssignmentToDb(customers[i], selectedDriver)
             cabAssignmentList.append(cabAssignData)
             # This is for front end purposes. Temporary hack. Need a pub-sub model in redis as final solution
-            redisDBAssignmentRecord = redis.StrictRedis(host='172.31.2.14',  port=6379, db=1, password='abrakadabra')
+            redisDBAssignmentRecord = redis.StrictRedis(host=confParams['redis_host'],  port=confParams['redis_port'], db=confParams['custReservRecord'], \
+                                      password=confParams['redis_pwd'])
             redisDBAssignmentRecord.set(str(customer['custID']), str(selectedDriver['cab_id']))
             # Delete cab from cab database. TODO: Do a bulk delete
             try: 
@@ -108,27 +111,44 @@ def getClosestDriver(customerStream):
 
     ewCabAssignDb.create_document_multi(cabAssignmentList)
 
+def getConfParams(configFile): 
+    config = open(configFile, 'r')
+    confParams = {}
+    for line in config:
+        if '#' not in line: 
+            items = re.split('=| |\n', line)
+            #items.remove('')
+            filt_items = [x for x in items if x != ''] 
+            #print filt_items
+            if len(filt_items) >= 2:  
+                confParams[str(filt_items[0])] = str(filt_items[1])
+    
+    #print confParams
+    return confParams
+
 ## Main Loop ## 
 if __name__ == "__main__":
 
-    if len(sys.argv) != 3:
-        print("Usage: kafka_wordcount.py <zk> <topic>")
+    if len(sys.argv) != 2:
+        print("Usage: python spark_kafka.py config_file")
         exit(-1)
     
-    rs = redis.StrictRedis(host='172.31.2.14',  port=6379, db=0, password='abrakadabra')
+    configFile = sys.argv[1]
+    confParams = getConfParams(configFile) 
+    rs = redis.StrictRedis(host=confParams['redis_host'],  port=confParams['redis_port'], db=confParams['cabDB'], \
+         password=confParams['redis_pwd'])
     sc = SparkContext(appName="BookMyCab")
     ssc = StreamingContext(sc, 2)  # window size in sec 
-    zkQuorum, topic = sys.argv[1:]
-    zkQuorum = "localhost::2181"
-    customer_topic = "customer-request"
-    driver_topic = "driver-request"
-    kafkaBrokers = {"metadata.broker.list": '172.31.2.14:9092, 172.31.2.6:9092, 172.31.2.4:9092, 172.31.2.5:9092'}
+    zkQuorum = confParams['zkQuorum']
+    customer_topic = confParams['customer_topic']
+    driver_topic = confParams['driver_topic']
+    kafkaBrokers = {"metadata.broker.list": confParams['kafkaBrokers']}
     ew_cust = ElasticWrapper('cust')
 
     ## Driver Stream Processing ## 
     driverStream = KafkaUtils.createDirectStream(ssc, [driver_topic], kafkaBrokers)
     cabStreamData = driverStream.map(lambda x: x[1])
-    driverDataRDD = cabStreamData.map(lambda x: parseSensor(x))
+    driverDataRDD = cabStreamData.map(lambda x: parseStream(x))
     drivers = driverDataRDD.map(lambda item: {'cabID': item['ID'], 'lat' :item['pickup_latitude'], \
              'long' : item['pickup_longitude'] }) 
     drivers.pprint()
@@ -140,7 +160,7 @@ if __name__ == "__main__":
     # Customer Data Stream Handing 
     customerStream = KafkaUtils.createDirectStream(ssc, [customer_topic], kafkaBrokers)
     customerStreamData = customerStream.map(lambda x: x[1])
-    customerDataRDD = customerStreamData.map(lambda x: parseSensor(x))
+    customerDataRDD = customerStreamData.map(lambda x: parseStream(x))
     customers = customerDataRDD.map(lambda item: {'custID': item['ID'], 'lat' : item['pickup_latitude'],\
                 'long' :item['pickup_longitude'] , 'dropoff_lat': item['dropoff_latitude'], 'dropoff_long': item['dropoff_longitude']})
     customers.pprint()

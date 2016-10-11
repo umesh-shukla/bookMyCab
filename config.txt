@@ -1,0 +1,15 @@
+# Kafka Details - Sample values, Modify for your project
+zkQuorum = localhost::2181
+customer_topic = custRequest
+driver_topic = cabRequest 
+kafkaBrokers = 172.31.xx.xx:9092,172.31.xx.xx:9092,172.31.xx.xx:9092,172.31.xx.xx:9092 
+
+# Redis Details
+redis_host = 172.31.xx.xx
+redis_port = xxxx
+redis_pwd = xxxx 
+# Database ID
+cabDB = xx
+custReservRecord = xx 
+
+#

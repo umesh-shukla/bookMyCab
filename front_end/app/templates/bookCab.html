@@ -11,8 +11,8 @@
         padding: 0;
       }
       #map {
-        height: 70%;
-        width: 70%;
+        height: 93%;
+        width: 93%;
         text-align: center;
         margin: 0 auto;
       }
@@ -219,13 +219,15 @@ function setMarkers(map) {
         // direction to the right and in the Y direction down.
         //alert('Set marker called')
         var image = {
-          url: 'http://maps.google.com/mapfiles/ms/icons/cabs.png',
+          url: 'http://maps.google.com/mapfiles/kml/shapes/cabs.png', 
+          scaledSize: new google.maps.Size(23, 25), // scaled size
+          //url: '/home/ubuntu/bookMyCab/front_end/app/templates/black_taxi.png',
           // This marker is 20 pixels wide by 32 pixels high.
-          size: new google.maps.Size(20, 32),
+          size: new google.maps.Size(24, 36),
           // The origin for this image is (0, 0).
           origin: new google.maps.Point(0, 0),
           // The anchor for this image is the base of the flagpole at (0, 32).
-          anchor: new google.maps.Point(0, 32)
+          anchor: new google.maps.Point(0, 36)
         };
         // Shapes define the clickable region of the icon. The type defines an HTML
         // <area> element 'poly' which traces out a polygon as a series of X,Y points.
@@ -241,7 +243,7 @@ function setMarkers(map) {
           var marker = new google.maps.Marker({
             position: {lat: beach[1], lng: beach[2]},
             map: map,
-            icon: image,
+            icon: image, 
             shape: shape,
             title: beach[0],
           });
@@ -279,7 +281,15 @@ function bookCab()
         url: 'http://ec2-52-43-129-33.us-west-2.compute.amazonaws.com/booknow/'+center_lat+'/'+center_long,
         data: { get_param: 'value' },
         success: function (data) {
-            alert(data.cust+", your cab: "+data.cab+" is arriving. Happy Trip!");
+            //alert(data.cust+", your cab: "+data.cab+" is arriving. Happy Trip!");
+            markers.forEach(function(marker) {
+                if (marker.title == data.cab){
+                    var content = data.cust+', your yellow cab: '+ data.cab + ' is arriving asap!'; 
+                    var infowindow = new google.maps.InfoWindow({content: content}); 
+                    marker.setAnimation(google.maps.Animation.BOUNCE);
+                    infowindow.open(map, marker);
+                }
+            });
         }
     });
      
@@ -288,7 +298,7 @@ function bookCab()
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBsrKTI_9bnx3J0CSXrlBNDKpI1CVtpUxA&libraries=places&callback=initMap" async defer></script>
 <div align="center">
-<button type="button" onclick="bookCab()" class="button">Book Now</button>
+<button type="button" onclick="bookCab()" class="button">Book ASAP!</button>
 </div>
 </body>
 </html>
