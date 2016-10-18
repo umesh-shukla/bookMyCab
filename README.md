@@ -9,14 +9,14 @@
 ## Introduction 
 [Back to Table of contents](README.md#table-of-contents)
 
-ASAP Cab is a real-time scalable data platform similar to Uber app. This can be used by any taxi company to do rider reservations which accounts of cab driver locations in real-time. The system assigns the geo-graphically closest cab to a rider to minimize customer wait time. Refer to bookmycab_slides.pdf for more details. 
+ASAP Cab is a real-time scalable data platform aka Uber system for Yellow/Green Cabs. This can be used by any taxi company to do rider reservations and accounts of cab driver locations in real-time. The system assigns the geographically closest cab to a rider to minimize customer wait time. Refer to asapcab_slides.pdf for more details. 
 
 ## Data Pipeline & Architecture
 [Back to Table of contents](README.md#table-of-contents)
 
 Below diagram shows data pipeline of this project. 
 
-![Alt text](app/static/img/data_pipeline.png?raw=true “Data Pipeline“)
+![Alt text](front_end/static/data_pipeline.png?raw=true “Data Pipeline“)
 
 ### Data Ingestion
 Rider data is comes from front end UI which essentially comes due to riders requesting to reserve a cab. Cab drivers data comes from cab as an independent stream. This stream is simulated in current project by using NYC yellow cab data. Both streams: Rider-request and cab driver-request are ingested into Kafka using two Kafka topics. Kafka feeds these two streams into Spark streaming engine.  
@@ -37,7 +37,7 @@ This pipeline is running on 4-node m4.large AWS cluster for now. Other than Redi
 
 The system can handle ~ 900 requests (riders + cab drivers) per second with 4-node AWS cluster which is decent. The system was stress tested with NYC yellow cab data and below is the performance chart w.r.t. no. of users which suggests that system is stable with micro-batch window size of 5 sec. 
 
-![Alt text](app/static/img/performance.png?raw=true)
+![Alt text](front_end/static/performance.png?raw=true)
 
 
 
